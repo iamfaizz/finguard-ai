@@ -221,3 +221,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# project
+.env
+.venv/
+data/raw/
+ml-fraud/data/
+*.pkl
+models/
+node_modules/
+.ipynb_checkpoints/
+.DS_Store
