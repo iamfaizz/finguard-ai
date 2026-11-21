@@ -1,0 +1,7 @@
+model,pr_auc,precision,recall,f1,TP,FP,FN,TN,cost_5FN_1FP
+Rule: isFlaggedFraud,,1.0,0.005,0.01,8,0,1592,41950,7960
+"Rule: amount > 200,000",,0.057,0.6675,0.1051,1068,17661,532,24289,20321
+Logistic Regression (A),0.711,0.6879,0.8019,0.7405,1283,582,317,41368,2167
+Isolation Forest (A),0.5019,0.607,0.4362,0.5076,698,452,902,41498,4962
+XGBoost (A deployable),0.9968,0.9638,0.9975,0.9803,1596,60,4,41890,80
+XGBoost (B with post-transaction balances),1.0,0.9932,1.0,0.9966,1600,11,0,41939,11
