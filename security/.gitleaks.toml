@@ -1,0 +1,7 @@
+title = "FinGuard AI gitleaks config"
+[extend]
+useDefault = true
+
+[allowlist]
+description = "placeholders only"
+paths = ['''\.env\.example$''', '''advisor/tests/''']
