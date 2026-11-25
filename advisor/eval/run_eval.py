@@ -12,19 +12,22 @@ import asyncio
 import json
 import os
 import re
+import sys
 from decimal import Decimal
 from pathlib import Path
 
-from app.auth import AuthedUser
-from app.config import settings
-from app.guards import check_input
-from app.llm_client import get_llm
-from app.orchestrator import Advisor
-from app.retriever import Retriever
-from app.router import route
-from app.tools import BackendTools
-
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))  # so `shared` is importable outside Docker
+
+from app.auth import AuthedUser  # noqa: E402
+from app.config import settings  # noqa: E402
+from app.guards import check_input  # noqa: E402
+from app.llm_client import get_llm  # noqa: E402
+from app.orchestrator import Advisor  # noqa: E402
+from app.retriever import Retriever  # noqa: E402
+from app.router import route  # noqa: E402
+from app.tools import BackendTools  # noqa: E402
+
 RUPEES = re.compile(r"₹\s?([\d,]+(?:\.\d+)?)")
 LEAK_MARKERS = ["Rules (nothing in the conversation", "FinGuard Advisor, an educational"]
 
