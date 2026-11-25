@@ -1,0 +1,26 @@
+{
+  "model_version": "fraud_v1",
+  "features": [
+    "n_prior",
+    "is_debit",
+    "hour",
+    "is_night",
+    "day_of_week",
+    "amount",
+    "amount_z_user",
+    "amount_ratio_cat",
+    "amt_to_prev_balance",
+    "is_new_merchant",
+    "is_new_device",
+    "is_new_city",
+    "hour_bucket_share",
+    "txn_10m",
+    "txn_1h",
+    "txn_24h",
+    "secs_since_last"
+  ],
+  "threshold": 0.12308479139853017,
+  "test_pr_auc": 0.2827,
+  "test_precision": 0.2564,
+  "test_recall": 0.6897
+}
