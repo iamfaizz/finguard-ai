@@ -5,7 +5,7 @@ ADAPT THESE 5 IMPORTS to D's/C's real names:
   get_db           -> sync SQLAlchemy Session dependency
   Transaction, Goal, ChatMessage -> models from Step 1.3
   settings.ml_forecast_url
-Forecast contract = C's finguard_ml_forecast.py (see _forecast). Income is computed here from the user's credits.
+Forecast + goal maths come from C's ml-forecast (/forecast, /goal-plan). Income is computed here from the user's credits.
 The user comes ONLY from get_current_user (the JWT). No endpoint takes a user id.
 Include in main.py:  app.include_router(advisor_tools.router)
 """
@@ -83,11 +83,14 @@ def _income_estimate(db: Session, user) -> Decimal:
     return _q(Decimal(total) / Decimal(span_days) * Decimal(30))
 
 
-def _forecast(db: Session, user) -> ForecastSummary:
-    # C's real contract (finguard_ml_forecast.py):
-    #   POST /forecast {"transactions": [...], "horizon": 30}
-    #   -> {"total_predicted_spending", "low_confidence", "history_days", "forecast_days",
-    #       "method", "category_forecasts", "confidence_note"}
+def _forecast_raw(db: Session, user) -> dict:
+    """Call C's POST /forecast and return its raw response.
+
+    C's real contract (ml-forecast/projecttt.py, forecast_spending):
+      request  {"transactions": [{amount, category, timestamp, type}], "horizon": 30}
+      response {"total_predicted_spending", "low_confidence", "history_days",
+                "category_forecasts": {cat: {"next_30_days_estimate": ...}}, ...}
+    """
     txns = _ml_transactions(db, user)
     if not txns:
         raise HTTPException(409, "No transaction history yet")
@@ -95,27 +98,66 @@ def _forecast(db: Session, user) -> ForecastSummary:
         r = httpx.post(f"{settings.ml_forecast_url}/forecast",
                        json={"transactions": txns, "horizon": 30}, timeout=10.0)
         r.raise_for_status()
-        d = r.json()
-        spend = Decimal(str(d["total_predicted_spending"]))
-        low_conf = bool(d["low_confidence"])
-    except (httpx.HTTPError, KeyError, ValueError):
+        return r.json()
+    except (httpx.HTTPError, ValueError):
         raise HTTPException(503, "Forecast service unavailable") from None
-    income = _income_estimate(db, user)
+
+
+def _summary(raw: dict, income: Decimal) -> ForecastSummary:
+    try:
+        spend = Decimal(str(raw["total_predicted_spending"]))
+        low_conf = bool(raw["low_confidence"])
+    except (KeyError, ValueError, ArithmeticError):
+        raise HTTPException(503, "Forecast service returned an unexpected response") from None
     return ForecastSummary(predicted_spend_inr=_q(spend), predicted_income_inr=income,
                            predicted_surplus_inr=_q(income - spend), low_confidence=low_conf)
 
 
-def _goal_items(db: Session, user) -> list[GoalItem]:
-    # Same formula as C's goal planner: (target - saved) / months_left. Keep them identical!
+def _forecast(db: Session, user) -> ForecastSummary:
+    return _summary(_forecast_raw(db, user), _income_estimate(db, user))
+
+
+def months_left(target: date, today: date) -> int:
+    """Whole months from today to the target date, minimum 1 (C's planner needs an int >= 1).
+
+    Rounded DOWN on purpose: fewer months = a higher monthly amount = the safe side.
+    Example: 25 Nov -> 25 May = 6 months. The frontend must show the backend's number,
+    never recompute this.
+    """
+    months = (target.year - today.year) * 12 + (target.month - today.month)
+    if target.day < today.day:
+        months -= 1
+    return max(months, 1)
+
+
+def _goal_plan(payload: dict) -> dict:
+    """Ask C's POST /goal-plan. The goal maths lives ONLY in C's plan_goal() - never duplicated here."""
+    try:
+        r = httpx.post(f"{settings.ml_forecast_url}/goal-plan", json=payload, timeout=5.0)
+        r.raise_for_status()
+        return r.json()
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(503, "Goal planner unavailable") from None
+
+
+def _goal_items(db: Session, user, raw: dict, income: Decimal) -> list[GoalItem]:
+    # NOTE: each goal is checked against the full forecast surplus on its own.
+    spend = float(raw["total_predicted_spending"])
+    cats = {k: float(v["next_30_days_estimate"]) for k, v in raw.get("category_forecasts", {}).items()}
     items = []
     for g in db.scalars(select(Goal).where(Goal.user_id == user.id)):
-        remaining = max(Decimal(g.target_amount) - Decimal(g.saved_amount), Decimal(0))
-        months_left = max(Decimal((g.target_date - date.today()).days) / Decimal("30.4375"), Decimal(1))
-        required = _q(remaining / months_left)
-        pct = float(Decimal(g.saved_amount) / Decimal(g.target_amount) * 100) if g.target_amount else 0.0
-        items.append(GoalItem(name=g.name, target_inr=_q(Decimal(g.target_amount)), saved_inr=_q(Decimal(g.saved_amount)),
+        target, saved = Decimal(g.target_amount), Decimal(g.saved_amount)
+        plan = _goal_plan({
+            "target_amount": float(target), "saved_amount": float(saved),
+            "months_left": months_left(g.target_date, date.today()),
+            "forecast_income": float(income), "forecast_spending": spend,
+            "category_forecasts": cats,
+        })
+        required = _q(Decimal(str(plan["goal"]["required_monthly_savings"])))
+        pct = float(saved / target * 100) if target > 0 else 0.0
+        items.append(GoalItem(name=g.name, target_inr=_q(target), saved_inr=_q(saved),
                               target_date=g.target_date, required_monthly_inr=required,
-                              progress_pct=round(pct, 1), on_track=False))  # on_track filled by caller
+                              progress_pct=round(pct, 1), on_track=not plan["infeasible"]))
     return items
 
 
@@ -147,8 +189,9 @@ def forecast(user=Depends(get_current_user), db: Session = Depends(get_db)):
 
 
 def _free_cash(db: Session, user) -> tuple[ForecastSummary, Decimal, Decimal]:
-    f = _forecast(db, user)
-    commitments = sum((g.required_monthly_inr for g in _goal_items(db, user)), Decimal(0))
+    raw, income = _forecast_raw(db, user), _income_estimate(db, user)
+    f = _summary(raw, income)
+    commitments = sum((g.required_monthly_inr for g in _goal_items(db, user, raw, income)), Decimal(0))
     return f, _q(commitments), _q(f.predicted_surplus_inr - commitments)
 
 
@@ -169,11 +212,8 @@ def affordability(body: AffordabilityRequest, user=Depends(get_current_user), db
 
 @router.get("/goal-status", response_model=GoalStatus)
 def goal_status(user=Depends(get_current_user), db: Session = Depends(get_db)):
-    _, _, free = _free_cash(db, user)
-    items = _goal_items(db, user)
-    for g in items:
-        g.on_track = free >= 0  # surplus already net of ALL goal commitments
-    return GoalStatus(goals=items)
+    raw, income = _forecast_raw(db, user), _income_estimate(db, user)
+    return GoalStatus(goals=_goal_items(db, user, raw, income))
 
 
 @router.post("/chat-messages", status_code=204)
