@@ -1,6 +1,7 @@
 # Step 5.1 manifest: one entry per document. Every doc needs source_url, dates, licence.
 # Set `verified: true` ONLY after a teammate has spot-checked it (CP-5.1).
-# STARTER DRAFTS: re-write each from the official page you cite and update as_of.
+# STARTER DRAFTS: re-write each from the official page you cite. Replace source_url with the exact page,
+# and set retrieved_on / as_of to the day you verified it. Keep verified: false until a teammate spot-checks it.
 documents:
   - id: budget-50-30-20
     title: "The 50/30/20 budgeting rule and emergency funds"
@@ -27,4 +28,112 @@ documents:
     retrieved_on: "2026-11-21"
     as_of: "2026-11-21"
     licence: "Own paraphrase of public RBI/NPCI awareness material; no text copied"
+    verified: false
+
+  - id: sip-mutual-funds-basics
+    title: "SIP and mutual fund basics"
+    file: docs/sip-mutual-funds-basics.md
+    source_url: "https://investor.sebi.gov.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: ppf-basics
+    title: "Public Provident Fund (PPF) basics"
+    file: docs/ppf-basics.md
+    source_url: "https://www.indiapost.gov.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: epf-basics
+    title: "Employees' Provident Fund (EPF) basics"
+    file: docs/epf-basics.md
+    source_url: "https://www.epfindia.gov.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: nps-basics
+    title: "National Pension System (NPS) basics"
+    file: docs/nps-basics.md
+    source_url: "https://www.pfrda.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: credit-score-basics
+    title: "Credit score basics"
+    file: docs/credit-score-basics.md
+    source_url: "https://www.rbi.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: credit-card-minimum-due
+    title: "Credit cards and the minimum due trap"
+    file: docs/credit-card-minimum-due.md
+    source_url: "https://www.rbi.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: debt-repayment-methods
+    title: "Repaying debt: avalanche and snowball methods"
+    file: docs/debt-repayment-methods.md
+    source_url: "https://www.ncfe.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: insurance-basics
+    title: "Insurance basics: term and health cover"
+    file: docs/insurance-basics.md
+    source_url: "https://irdai.gov.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: fd-rd-and-deposit-safety
+    title: "Fixed deposits, recurring deposits and deposit safety"
+    file: docs/fd-rd-and-deposit-safety.md
+    source_url: "https://www.dicgc.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: inflation-and-compounding
+    title: "Inflation and compound interest"
+    file: docs/inflation-and-compounding.md
+    source_url: "https://www.rbi.org.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: scams-digital-arrest-and-kyc
+    title: "Scams: fake KYC, digital arrest and phishing"
+    file: docs/scams-digital-arrest-and-kyc.md
+    source_url: "https://cybercrime.gov.in/"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own paraphrase of public information; no text copied"
+    verified: false
+
+  - id: savings-goal-basics
+    title: "Setting a savings goal"
+    file: docs/savings-goal-basics.md
+    source_url: "https://github.com/iamfaizz/finguard-ai"   # TODO: exact page
+    retrieved_on: "2026-11-25"
+    as_of: "2026-11-25"
+    licence: "Own wording; example figures are illustrative"
     verified: false
