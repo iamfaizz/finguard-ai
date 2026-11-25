@@ -6,6 +6,7 @@ prompt trick cannot make the advisor ask for someone else's data.
 """
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 
 PERSONAL = re.compile(r"\b(my|mine|i|me|am i|can i|should i|do i|will i)\b|kharch", re.I)
 AFFORD = re.compile(r"\b(afford|buy|purchase|spend on|splurge|worth it)\b", re.I)
@@ -26,20 +27,20 @@ class ToolCall:
     args: dict = field(default_factory=dict)
 
 
-def extract_amount(text: str) -> float | None:
-    """'20,000 rupee phone' -> 20000, '25k' -> 25000, '2 lakh' -> 200000."""
+def extract_amount(text: str) -> Decimal | None:
+    """'20,000 rupee phone' -> Decimal('20000'), '25k' -> 25000, '2 lakh' -> 200000. Never float."""
     for m in AMOUNT_RE.finditer(text):
         prefix, num, unit = m.group(1), m.group(2).rstrip(","), (m.group(3) or "").lower()
         try:
-            value = float(num.replace(",", ""))
-        except ValueError:
+            value = Decimal(num.replace(",", ""))
+        except InvalidOperation:
             continue
         if unit.startswith(("lakh", "lac")):
-            value *= 1e5
+            value *= Decimal(100000)
         elif unit in ("k", "thousand"):
-            value *= 1e3
+            value *= Decimal(1000)
         elif unit in ("crore", "crores", "cr"):
-            value *= 1e7
+            value *= Decimal(10000000)
         if prefix or unit:
             if value >= 1:
                 return value

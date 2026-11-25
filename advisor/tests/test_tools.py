@@ -50,3 +50,27 @@ def test_backend_down_returns_not_ok():
         return httpx.Response(500)
 
     assert not asyncio.run(_tools(handler).call(ToolCall("get_forecast"))).ok
+
+
+def test_affordability_amount_is_sent_as_exact_decimal_string():
+    seen = {}
+
+    def handler(req: httpx.Request):
+        seen["body"] = req.content.decode()
+        return httpx.Response(200, json={"verdict": "tight"})
+
+    from decimal import Decimal
+
+    res = asyncio.run(_tools(handler).call(ToolCall("check_affordability", {"amount": Decimal("20000.55")})))
+    assert res.ok and '"amount_inr":"20000.55"' in seen["body"].replace(" ", "")
+
+
+def test_non_finite_or_huge_amounts_rejected():
+    from decimal import Decimal
+
+    def handler(req):
+        raise AssertionError("must not be called")
+
+    t = _tools(handler)
+    for bad in [float("nan"), float("inf"), Decimal("NaN"), Decimal("Infinity"), "1e999", 0, -1, "abc"]:
+        assert not asyncio.run(t.call(ToolCall("check_affordability", {"amount": bad}))).ok, bad

@@ -76,10 +76,15 @@ def _validate(call: ToolCall) -> dict:
             raise ValueError("bad period")
         return {"period": period}
     if call.name == "check_affordability":
-        amount = float(call.args.get("amount", 0))
-        if not 0 < amount < 1e9:
+        try:
+            amount = Decimal(str(call.args.get("amount", 0)))
+        except InvalidOperation:
+            raise ValueError("bad amount") from None
+        # is_finite() first: NaN/Infinity must be rejected before any comparison
+        if not amount.is_finite() or not Decimal(0) < amount < Decimal("1000000000"):
             raise ValueError("bad amount")
-        return {"amount_inr": amount}
+        # sent as a STRING so JSON never turns money into a binary float
+        return {"amount_inr": str(amount.quantize(Decimal("0.01")))}
     return {}
 
 
