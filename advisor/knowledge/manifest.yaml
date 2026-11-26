@@ -1,0 +1,30 @@
+# Step 5.1 manifest: one entry per document. Every doc needs source_url, dates, licence.
+# Set `verified: true` ONLY after a teammate has spot-checked it (CP-5.1).
+# STARTER DRAFTS: re-write each from the official page you cite and update as_of.
+documents:
+  - id: budget-50-30-20
+    title: "The 50/30/20 budgeting rule and emergency funds"
+    file: docs/budget-50-30-20.md
+    source_url: "https://www.ncfe.org.in/"
+    retrieved_on: "2026-11-21"
+    as_of: "2026-11-21"
+    licence: "Own paraphrase of general financial-education concepts; no text copied"
+    verified: false
+
+  - id: tax-80c-basics
+    title: "Section 80C tax deduction basics"
+    file: docs/tax-80c-basics.md
+    source_url: "https://incometax.gov.in/"
+    retrieved_on: "2026-11-21"
+    as_of: "2025-04-01"   # CHECK: new Income-tax Act 2025 may renumber sections from 1 Apr 2026
+    licence: "Own paraphrase of public government information; no text copied"
+    verified: false
+
+  - id: upi-safety
+    title: "UPI safety and common scams"
+    file: docs/upi-safety.md
+    source_url: "https://www.rbi.org.in/"
+    retrieved_on: "2026-11-21"
+    as_of: "2026-11-21"
+    licence: "Own paraphrase of public RBI/NPCI awareness material; no text copied"
+    verified: false
