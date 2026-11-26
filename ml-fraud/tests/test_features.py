@@ -38,3 +38,10 @@ def test_no_future_leakage():
     f2 = build_features(changed)
     cols = [c for c in f1.columns if c != "txn_id"]
     pd.testing.assert_frame_equal(f1.iloc[:-1][cols], f2.iloc[:-1][cols])   # earlier rows must not change
+
+
+def test_simultaneous_transactions_count():
+    base = toy().iloc[:1].copy()
+    twin = dict(base.iloc[0], txn_id="TWIN")                      # same user, same timestamp
+    f = build_features(pd.concat([base, pd.DataFrame([twin])], ignore_index=True))
+    assert f.iloc[0].txn_10m == 0 and f.iloc[1].txn_10m == 1

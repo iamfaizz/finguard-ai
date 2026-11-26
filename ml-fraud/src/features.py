@@ -10,6 +10,12 @@ FEATURES = [
 ]
 
 
+def _prior_in_window(ts: np.ndarray, window: np.timedelta64) -> np.ndarray:
+    """For each row (sorted by time): how many EARLIER rows fall within `window` before it.
+    Earlier rows with the same timestamp count; later rows never do."""
+    return np.arange(len(ts)) - np.searchsorted(ts, ts - window, side="left")
+
+
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
     d["timestamp"] = pd.to_datetime(d["timestamp"])
@@ -22,7 +28,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     f["is_debit"] = (d["txn_type"] == "debit").astype(int)
     f["hour"] = d["timestamp"].dt.hour
     f["is_night"] = (f["hour"] < 6).astype(int)
-    f["day_of_week"] = d["timestamp"].dt.day_of_week
+    f["day_of_week"] = d["timestamp"].dt.dayofweek
     f["amount"] = d["amount"]
 
     mean_u = d.groupby("user_id")["_amt"].transform(lambda s: s.shift().expanding(5).mean())
@@ -40,9 +46,8 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     same_bucket = d.assign(_b=bucket).groupby(["user_id", "_b"]).cumcount()
     f["hour_bucket_share"] = same_bucket / f["n_prior"].where(f["n_prior"] > 0)
 
-    t = d.set_index("timestamp")
-    for name, w in [("txn_10m", "10min"), ("txn_1h", "1h"), ("txn_24h", "24h")]:
-        f[name] = t.groupby("user_id", sort=False)["amount"].rolling(w, closed="left").count().fillna(0).to_numpy()
+    for name, w in [("txn_10m", np.timedelta64(10, "m")), ("txn_1h", np.timedelta64(1, "h")), ("txn_24h", np.timedelta64(24, "h"))]:
+        f[name] = g["timestamp"].transform(lambda s, w=w: _prior_in_window(s.to_numpy(), w))
     f["secs_since_last"] = g["timestamp"].diff().dt.total_seconds()
 
     f["user_id"], f["timestamp"] = d["user_id"], d["timestamp"]

@@ -26,3 +26,22 @@ def test_limit_k_and_skip_untemplated_and_nan():
     r = row(amount_ratio_cat=5, is_new_device=1, is_new_city=1, txn_10m=4, amount_z_user=np.nan)
     out = top_reasons(np.array([1, 2, 3, 4, 9, 8]), r, NAMES, k=3)   # 'hour' has no template, amount_z_user is NaN
     assert len(out) == 3 and out[0].startswith("4 other transactions")
+
+
+def test_same_idea_is_not_repeated():
+    r = row(amount_ratio_cat=6.4, amount_z_user=3.2, is_new_device=1)
+    out = top_reasons(np.array([2.0, 1.0, 0, 0, 0, 1.5]), r, NAMES)      # ratio and z-score both qualify
+    assert out == ["The amount is 6.4x your usual spend in this category", "This is the first time you have used this device"]
+
+
+def test_group_falls_through_to_next_feature():
+    r = row(amount_ratio_cat=1.2, amount_z_user=3.0)                      # ratio too small to state, z-score is fine
+    out = top_reasons(np.array([2.0, 0, 0, 0, 0, 1.0]), r, NAMES)
+    assert out == ["The amount is 3.0 standard deviations above your normal spending"]
+
+
+def test_gap_wording():
+    names = ["secs_since_last"]
+    assert top_reasons(np.array([1.0]), pd.Series({"secs_since_last": 0.0}), names) == ["Made in the same second as your previous transaction"]
+    assert top_reasons(np.array([1.0]), pd.Series({"secs_since_last": 120.0}), names) == ["Only 2 minutes since your previous transaction"]
+    assert top_reasons(np.array([1.0]), pd.Series({"secs_since_last": 40.0}), names) == ["Only 40 seconds since your previous transaction"]
