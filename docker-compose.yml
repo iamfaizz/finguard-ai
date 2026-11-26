@@ -1,0 +1,112 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finguard}
+      POSTGRES_USER: ${POSTGRES_USER:-finguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set database password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finguard-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT secret}
+      JWT_SECRET: ${JWT_SECRET_KEY:?Set JWT secret}
+      FRONTEND_ORIGIN: http://localhost:5173
+      FORECAST_URL: ${FORECAST_URL:-http://ml-forecast:8000}
+      FRAUD_URL: ${FRAUD_URL:-http://ml-fraud:8001}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finguard-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finguard-network
+
+  ml-fraud:
+    build: ./ml-fraud
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - finguard-network
+
+  ml-forecast:
+    build: ./ml-forecast
+    ports:
+      - "127.0.0.1:8002:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finguard-network
+
+  advisor:
+    build:
+      context: .
+      dockerfile: advisor/Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET_KEY:?Set JWT secret}
+      BACKEND_URL: http://backend:8000
+      LLM_PROVIDER: ${LLM_PROVIDER:-claude}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL_FAST: ${LLM_MODEL_FAST:-claude-haiku-5-5}
+      LLM_MODEL_SMART: ${LLM_MODEL_SMART:-claude-sonnet-5-5}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "127.0.0.1:8003:8003"
+    volumes:
+      - chroma_data:/data/chroma
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - finguard-network
+
+volumes:
+  postgres_data:
+  chroma_data:
+
+networks:
+  finguard-network:
+    driver: bridge
