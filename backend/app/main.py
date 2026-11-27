@@ -51,11 +51,26 @@ def serialize(t):
     return dict(id=t.id, timestamp=t.timestamp.isoformat(), amount=str(t.amount), merchant=t.merchant, category=t.category, txn_type=t.txn_type, status=t.status, score=str(t.score) if t.score is not None else None, reason=t.reason)
 
 async def retry_pending():
+    cursor = None
     while True:
         try:
             with SessionLocal() as db:
-                rows=db.scalars(select(Transaction).where(Transaction.status=='pending_review').order_by(Transaction.timestamp, Transaction.id).limit(20)).all()
+                query = select(Transaction).where(
+                    Transaction.status == 'pending_review'
+                )
+                if cursor is not None:
+                    query = query.where(or_(
+                        Transaction.timestamp > cursor[0],
+                        and_(Transaction.timestamp == cursor[0],
+                             Transaction.id > cursor[1])
+                    ))
+                rows = db.scalars(query.order_by(
+                    Transaction.timestamp, Transaction.id
+                ).limit(20)).all()
+                if not rows:
+                    cursor = None
                 for t in rows:
+                    cursor = (t.timestamp, t.id)
                     try:
                         cat=await service(os.getenv('FORECAST_URL','http://ml-forecast:8000')+'/categorize', {'merchant':t.merchant,'narration':t.merchant})
                         t.category=cat['category']
@@ -77,8 +92,8 @@ async def retry_pending():
                         t.reason = '; '.join(reasons)
                         t.model_version = result['model_version']
                         t.status = 'flagged' if risk in ('MEDIUM','HIGH') else 'cleared'
-                    except (RuntimeError,KeyError,ValueError,TypeError,ArithmeticError):
-                        pass
+                    except (RuntimeError,KeyError,ValueError,TypeError,ArithmeticError) as exc:
+                        t.reason = f"Pending review: {type(exc).__name__}"
                     db.commit()
         except Exception:
             import logging
