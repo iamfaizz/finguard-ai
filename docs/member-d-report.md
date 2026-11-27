@@ -35,3 +35,17 @@ The tested dashboard satisfies its sequential response
 time requirement. Full advisor response verification
 requires LLM provider configuration. Fraud missing-data
 handling requires agreement with the model owner.
+
+## Additional Integration Verification
+
+- Actual login and logout: PASS
+- Duplicate CSV upload: PASS
+- Authenticated Advisor navigation: PASS
+- Total browser tests passed: 3
+- Backend tests passed: 17
+- Backend and Advisor JWT secrets match.
+- Original dataset validation: 6/9 passed.
+- Temporary cleaned dataset validation: 8/9 passed.
+
+Actual LLM response and model-generated fraud alert
+verification remain dependent on team integration.
