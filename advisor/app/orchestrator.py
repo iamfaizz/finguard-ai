@@ -18,7 +18,10 @@ HARD_HINT = re.compile(r"\b(compare|vs|versus|which is better|tax|regime|should 
 def build_context(chunks: list[RetrievedChunk], results: list, extra_note: str = "") -> str:
     parts = ["<knowledge>"]
     for i, c in enumerate(chunks, 1):
-        parts.append(f"[{i}] {c.title} | section: {c.section} | as of {c.as_of}\n{c.text}")
+        body = re.sub(r"^#+ .*\n?", "", c.text, flags=re.M).strip()  # drop markdown headings
+        attrs = " ".join(f'{k}="{str(v).replace(chr(34), chr(39))}"' for k, v in
+                         (("title", c.title), ("section", c.section), ("as_of", c.as_of)))
+        parts.append(f'<passage n="{i}" {attrs}>\n{body}\n</passage>')
     parts.append("</knowledge>")
     verified = {r.name: (r.data if r.ok else "UNAVAILABLE") for r in results}
     if extra_note:
