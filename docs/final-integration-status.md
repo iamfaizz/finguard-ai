@@ -1,3 +1,36 @@
-# Integration snapshot
-Member A source: archive commit 66ec3fd33b22590a0ec90d92146fcf1878c8f83c, unchanged. Forecast and Advisor use the uploaded project snapshot, not a verified fresh main checkout. Prior Member D migration patch included. Compose has six services. Fraud worker uses A's exact feature builder, user-scoped chronological history, and stores score/reasons/version. Medium/high flagged; low cleared. Missing balance/device/location and nonfinite features map to zero for the finite-only API; this fallback requires Member A validation. Historical category accuracy and backfilled transactions may affect scores. Existing pending transactions are retried. No production accuracy claim.
-Verified here: three adapter tests, Python compilation, YAML parsing. Docker/PostgreSQL, real model scoring, full E2E, LLM credentials and latest forecast commit verification remain pending. No git push. Keep existing .env and database volumes. Do not use docker compose down -v.
+# Final Integration Status
+
+## Fraud Integration
+The backend uses Member A's original V2 feature builder.
+All 17 generated features have passed feature parity testing.
+
+## Missing CSV Fields
+Balance, device and location are optional during CSV upload.
+Incomplete history and nonfinite features are rejected
+instead of being converted to artificial zero values.
+
+Affected transactions remain in pending_review.
+Retries do not guarantee resolution when historical
+data remains incomplete.
+
+This behaviour is intentional to prevent training-serving
+feature mismatch. A long-term missing-data strategy
+requires agreement with Member A.
+
+The demo should explain this behaviour using incomplete CSV data.
+
+## Verification
+- Backend tests: 17 passed.
+- Browser E2E tests: 3 passed.
+- Member D CI runs: 14 passed.
+- Docker and PostgreSQL: verified.
+- Real model scoring: verified.
+- Dashboard performance: 122.95 ms P95.
+- Backend and Advisor JWT secrets: matching.
+
+Model-generated fraud alert and actual LLM response
+verification remain dependent on team integration.
+
+No production model accuracy claim is made.
+Preserve existing environment files and database volumes.
+Do not use docker compose down -v.
