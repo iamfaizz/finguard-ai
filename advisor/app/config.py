@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,7 +30,8 @@ class Settings(BaseSettings):
 
     # --- backend / auth ---
     backend_url: str = "http://backend:8000"
-    jwt_secret: str  # MUST equal the backend's secret
+    # MUST equal the backend's secret. The backend calls it JWT_SECRET_KEY; JWT_SECRET also works.
+    jwt_secret: str = Field(validation_alias=AliasChoices("JWT_SECRET_KEY", "JWT_SECRET"))
     jwt_algorithm: str = "HS256"
     cors_origins: str = "http://localhost:5173"
 
