@@ -1,2 +1,14 @@
 fastapi==0.165.0
 uvicorn==0.54.0
+sqlalchemy==2.1.9
+psycopg2-binary==2.9.13
+pwdlib[argon2]
+PyJWT
+python-multipart
+slowapi
+pytest==9.2.0
+pandas==3.1.1
+pandera[pandas]==0.36.0
+httpx
+
+alembic==1.20.1

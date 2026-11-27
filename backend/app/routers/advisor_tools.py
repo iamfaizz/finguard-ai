@@ -17,9 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user  # D's dependency
-from app.db import get_db  # D's dependency
-from app.models import ChatMessage, Goal, Transaction  # Step 1.3 models
+from app.dependencies import get_current_user  # D's dependency
+from app.database import get_db  # D's dependency
+from app.member_d_models import ChatMessage, Goal, Transaction  # Step 1.3 models
 from app.settings import settings
 from shared.contracts.advisor import (
     AffordabilityRequest, AffordabilityResult, CategorySpend, ChatLogRequest,
@@ -146,6 +146,8 @@ def _goal_items(db: Session, user, raw: dict, income: Decimal) -> list[GoalItem]
     cats = {k: float(v["next_30_days_estimate"]) for k, v in raw.get("category_forecasts", {}).items()}
     items = []
     for g in db.scalars(select(Goal).where(Goal.user_id == user.id)):
+        if g.target_date is None:
+            raise HTTPException(409, "Set a target date for each goal before planning")
         target, saved = Decimal(g.target_amount), Decimal(g.saved_amount)
         plan = _goal_plan({
             "target_amount": float(target), "saved_amount": float(saved),
@@ -220,5 +222,5 @@ def goal_status(user=Depends(get_current_user), db: Session = Depends(get_db)):
 def save_chat(body: ChatLogRequest, user=Depends(get_current_user), db: Session = Depends(get_db)):
     db.add(ChatMessage(user_id=user.id, role="user", content=body.question, sources=[]))
     db.add(ChatMessage(user_id=user.id, role="assistant", content=body.answer,
-                       sources=[s.model_dump() for s in body.sources]))
+                       sources=[s.model_dump(mode="json") for s in body.sources]))
     db.commit()

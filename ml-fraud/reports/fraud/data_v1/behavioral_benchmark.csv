@@ -1,0 +1,4 @@
+model,pr_auc,precision,recall,f1,TP,FP,FN,TN,cost_5FN_1FP
+Rule: amount z-score > 3,,0.0372,0.2414,0.0645,7,181,22,4088,291
+Logistic Regression,0.1964,0.2807,0.5517,0.3721,16,41,13,4228,106
+XGBoost,0.2827,0.2564,0.6897,0.3738,20,58,9,4211,103

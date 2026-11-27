@@ -10,3 +10,6 @@ jupyter
 ipykernel
 kaggle
 pytest
+fastapi
+uvicorn[standard]
+pydantic

@@ -232,3 +232,12 @@ models/
 node_modules/
 .ipynb_checkpoints/
 .DS_Store
+
+# Local integration artifacts
+*.db
+*.dump
+frontend/test-results/
+frontend/playwright-report/
+.vscode/
+.env.*
+!.env.example
