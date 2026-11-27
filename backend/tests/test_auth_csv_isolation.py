@@ -56,3 +56,31 @@ def test_csv_and_user_isolation(client):
     assert client.get('/transactions/'+str(rows[0]['id']),headers=headers(b)).status_code==404
     goal=client.post('/goals',headers=headers(a),json={'name':'Demo','target':100,'saved':10}).json()
     assert client.delete('/goals/'+str(goal['id']),headers=headers(b)).status_code==404
+
+def test_csv_fraud_fields_persist(client):
+    from app.member_d_models import Transaction
+
+    t = register(client, 'fraud@example.test')
+    body = (
+        'timestamp,amount,merchant,txn_type,balance,device,location\n'
+        '2026-11-01T12:00:00,150,Store,debit,4850,Phone-A,Noida\n'
+    )
+
+    response = client.post(
+        '/transactions/upload',
+        headers=headers(t),
+        files={'file': ('test.csv', body, 'text/csv')}
+    )
+    assert response.status_code == 200
+    assert response.json()['imported'] == 1
+
+    dependency = app.dependency_overrides[get_db]
+    session = dependency()
+    db = next(session)
+    try:
+        row = db.query(Transaction).one()
+        assert float(row.balance) == 4850
+        assert row.device == 'Phone-A'
+        assert row.location == 'Noida'
+    finally:
+        session.close()

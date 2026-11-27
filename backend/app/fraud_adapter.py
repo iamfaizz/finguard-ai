@@ -19,14 +19,24 @@ def score_payload(history):
                  timestamp=pd.Timestamp(t.timestamp).tz_localize(None),
                  amount=float(t.amount), merchant=t.merchant,
                  category=t.category or 'Uncategorized', txn_type=t.txn_type,
-                 balance=float('nan'), device=None, location=None) for t in history]
+                 balance=float(t.balance) if t.balance is not None else float('nan'),
+                 device=t.device, location=t.location) for t in history]
+    if not rows:
+        raise ValueError("Empty transaction history")
+    if any(
+        not math.isfinite(r["balance"])
+        or not r["device"]
+        or not r["location"]
+        for r in rows
+    ):
+        raise ValueError("Incomplete V2 feature history")
     row = build_features(pd.DataFrame(rows)).iloc[-1]
-    # API requires finite values. Missing history/device/balance use neutral zero;
-    # this is an integration fallback, not a validated training-time imputation.
+    # Reject undefined features until a validated missing-data policy exists.
     ints = {'n_prior','is_debit','hour','is_night','day_of_week','is_new_merchant','is_new_device','is_new_city','txn_10m','txn_1h','txn_24h'}
     result = {}
     for key in FEATURES:
         v = float(row[key])
-        v = v if math.isfinite(v) else 0.0
+        if not math.isfinite(v):
+            raise ValueError(f"Undefined V2 feature: {key}")
         result[key] = int(v) if key in ints else v
     return result

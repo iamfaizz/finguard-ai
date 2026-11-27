@@ -27,6 +27,9 @@ class Row(BaseModel):
     amount: Decimal = Field(gt=0,max_digits=12,decimal_places=2)
     merchant: str = Field(min_length=1,max_length=200)
     txn_type: Literal['credit','debit'] = 'debit'
+    balance: Decimal | None = Field(default=None, max_digits=14, decimal_places=2)
+    device: str | None = Field(default=None, max_length=200)
+    location: str | None = Field(default=None, max_length=200)
 class GoalInput(BaseModel):
     name: str = Field(min_length=1,max_length=100)
     target: Decimal = Field(gt=0,max_digits=12,decimal_places=2)
@@ -134,6 +137,9 @@ async def upload(file:UploadFile,u=Depends(current_user),db=Depends(get_db)):
         rows=[]
         for i,r in enumerate(reader,2):
             if len(rows) >= 5000: raise ValueError("Maximum 5000 CSV rows")
+            for field in ('balance', 'device', 'location'):
+                value = r.get(field)
+                r[field] = value.strip() if value and value.strip() else None
             try: rows.append(Row.model_validate(r))
             except ValidationError: raise ValueError(f'Invalid CSV row {i}')
     except (ValueError,csv.Error) as e: raise HTTPException(422,str(e))
@@ -146,7 +152,7 @@ async def upload(file:UploadFile,u=Depends(current_user),db=Depends(get_db)):
     for r in rows:
         ts=r.timestamp.replace(tzinfo=timezone.utc) if r.timestamp.tzinfo is None else r.timestamp.astimezone(timezone.utc)
         key=hashlib.sha256(f'{u.id}|{ts.isoformat()}|{r.amount:.2f}|{r.merchant.strip().casefold()}'.encode()).hexdigest()
-        values.append(dict(user_id=u.id,timestamp=ts,amount=r.amount,merchant=r.merchant,txn_type=r.txn_type,fingerprint=key,status='pending_review',category='Uncategorized'))
+        values.append(dict(user_id=u.id,timestamp=ts,amount=r.amount,merchant=r.merchant,txn_type=r.txn_type,balance=r.balance,device=r.device,location=r.location,fingerprint=key,status='pending_review',category='Uncategorized'))
     count=0
     for start in range(0,len(values),500):
         result=db.execute(insert(Transaction).values(values[start:start+500]).on_conflict_do_nothing(index_elements=['user_id','fingerprint']).returning(Transaction.id)); count+=len(result.all())
