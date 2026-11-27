@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: finguard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      ML_FRAUD_URL: http://ml-fraud:8001
+      ML_FORECAST_URL: http://ml-forecast:8002
+    depends_on:
+      - ml-fraud
+      - ml-forecast
+    restart: unless-stopped
+
+  ml-fraud:
+    build:
+      context: ./ml-fraud
+    container_name: finguard-ml-fraud
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+
+  ml-forecast:
+    build:
+      context: ./ml-forecast
+    container_name: finguard-ml-forecast
+    expose:
+      - "8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  default:
+    name: finguard-network
