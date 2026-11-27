@@ -101,7 +101,8 @@ def main():
     args = parser.parse_args()
     if args.timeout < 0:
         parser.error("--timeout must be nonnegative")
-    all_ok = all(check_health(name, url, args.timeout) for name, url in SERVICES.items())
+    results = [check_health(name, url, args.timeout) for name, url in SERVICES.items()]
+    all_ok = all(results)
     if not all_ok:
         print("Stack is not healthy; inspect: docker compose ps && docker compose logs --tail=100", file=sys.stderr)
         return 1
