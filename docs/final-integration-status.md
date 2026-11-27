@@ -34,3 +34,16 @@ verification remain dependent on team integration.
 No production model accuracy claim is made.
 Preserve existing environment files and database volumes.
 Do not use docker compose down -v.
+
+## CSV Upload Template
+
+Path: data/templates/transaction_upload_template.csv
+
+The template contains 20 synthetic transactions with
+populated balance, device and location fields.
+
+Transactions are chronologically ordered with positive
+amounts and consistent balances.
+
+Initial transactions may remain in pending_review
+until sufficient feature history exists.
