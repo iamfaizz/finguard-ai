@@ -84,3 +84,56 @@ def test_csv_fraud_fields_persist(client):
         assert row.location == 'Noida'
     finally:
         session.close()
+
+@pytest.mark.parametrize("status", ["confirmed", "dismissed"])
+def test_fraud_feedback(client, status):
+    from app.member_d_models import Transaction
+
+    a = register(client, "owner@example.test")
+    b = register(client, "other@example.test")
+
+    body = (
+        "timestamp,amount,merchant,txn_type\n"
+        "2026-11-01T12:00:00,150,Store,debit\n"
+    )
+
+    response = client.post(
+        "/transactions/upload",
+        headers=headers(a),
+        files={"file": ("test.csv", body, "text/csv")}
+    )
+    assert response.status_code == 200
+
+    session = app.dependency_overrides[get_db]()
+    db = next(session)
+    try:
+        row = db.query(Transaction).one()
+        row.status = "flagged"
+        db.commit()
+        txn_id = row.id
+    finally:
+        session.close()
+
+    url = f"/alerts/{txn_id}/feedback"
+
+    assert len(client.get("/alerts", headers=headers(a)).json()) == 1
+    assert client.get("/alerts", headers=headers(b)).json() == []
+
+    assert client.post(
+        url, headers=headers(b), json={"status": status}
+    ).status_code == 404
+
+    assert client.post(
+        url, headers=headers(a), json={"status": "invalid"}
+    ).status_code == 422
+
+    response = client.post(
+        url, headers=headers(a), json={"status": status}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == status
+
+    assert client.get("/alerts", headers=headers(a)).json() == []
+    assert client.post(
+        url, headers=headers(a), json={"status": status}
+    ).status_code == 404
