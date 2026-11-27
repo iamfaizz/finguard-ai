@@ -1,13 +1,15 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-pydantic==2.10.3
-pydantic-settings==2.6.1
+# Versions below are the ones that ran on the team laptop (Python 3.13, Nov 2026).
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.4
+pydantic-settings==2.16.3
 httpx==0.28.1
-PyJWT==2.10.1
-PyYAML==6.0.2
-chromadb==0.5.23
-sentence-transformers==3.3.1
-langchain-core==0.3.28
-langchain-anthropic==0.3.1
-langchain-ollama==0.2.2
-langchain-text-splitters==0.3.4
+PyJWT==2.15.1
+PyYAML==6.0.3
+chromadb==1.5.9
+sentence-transformers==6.3.0
+langchain-core==1.6.3
+langchain-text-splitters==1.2.0
+langchain-ollama==1.2.0
+# NOT tested yet: pin the exact version after the first successful Claude run
+langchain-anthropic>=1.0,<2.0

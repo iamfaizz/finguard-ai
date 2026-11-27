@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 # stop users/history from forging our prompt delimiters
-TAG_RE = re.compile(r"</?\s*(knowledge|verified_numbers|question|system)\s*>", re.I)
+TAG_RE = re.compile(r"</?\s*(knowledge|passage|verified_numbers|question|system)\s*>", re.I)
 
 INJECTION = [
     r"ignore\s+(all\s+|any\s+|your\s+|the\s+|previous\s+|prior\s+|above\s+)*(instructions|rules|prompts?)",
