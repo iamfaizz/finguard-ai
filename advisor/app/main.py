@@ -23,8 +23,20 @@ rate_limiter = RateLimiter(settings.rate_limit_per_min)
 advisor = Advisor(retriever=retriever, llm_factory=get_llm, tools_factory=lambda token: BackendTools(token))
 
 
+def llm_configured() -> bool:
+    """Cheap check (no API call): Ollama needs no key; Gemini/Claude need their API key."""
+    if settings.llm_provider == "gemini":
+        return bool(settings.gemini_api_key)
+    if settings.llm_provider == "claude":
+        return bool(settings.anthropic_api_key)
+    return True
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if not llm_configured():
+        log.error("LLM_PROVIDER=%s but its API key is empty: /chat will return 503. "
+                  "Set the key, or set LLM_PROVIDER=ollama.", settings.llm_provider)
     try:
         await asyncio.to_thread(retriever.warm)
     except Exception:  # noqa: BLE001 - service must still start; /chat will report errors
@@ -43,7 +55,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "provider": settings.llm_provider}
+    return {"status": "ok", "provider": settings.llm_provider, "llm_configured": llm_configured()}
 
 
 def _sse(event: dict) -> str:
@@ -57,7 +69,9 @@ async def _event_stream(req: ChatRequest, user: AuthedUser) -> AsyncIterator[str
             yield _sse(ev)
     except Exception:  # noqa: BLE001 - never leak internals to the client
         log.exception("chat failed")
-        yield _sse({"type": "error", "message": "The advisor is temporarily unavailable. Please try again."})
+        msg = ("The advisor is not configured on the server yet." if not llm_configured()
+               else "The advisor is temporarily unavailable. Please try again.")
+        yield _sse({"type": "error", "message": msg})
 
 
 @app.post("/chat")
@@ -84,6 +98,7 @@ async def chat(req: ChatRequest, user: AuthedUser = Depends(get_current_user)):
                 used, refused = ev["used_tools"], ev["refused"]
     except Exception:  # noqa: BLE001
         log.exception("chat failed")
-        raise HTTPException(status_code=503, detail="Advisor temporarily unavailable") from None
+        detail = "Advisor LLM is not configured" if not llm_configured() else "Advisor temporarily unavailable"
+        raise HTTPException(status_code=503, detail=detail) from None
     return ChatResponse(answer="".join(answer), sources=[Source(**s) for s in sources],
                         used_tools=used, refused=refused)

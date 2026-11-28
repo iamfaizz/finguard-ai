@@ -1,5 +1,6 @@
 """CP-5.6: /chat contract tests (auth, validation, JSON mode, SSE mode, rate limit)."""
 import json
+from datetime import datetime, timedelta, timezone
 
 import jwt
 import pytest
@@ -9,7 +10,10 @@ from app import main
 from app.config import settings
 from app.rate_limit import RateLimiter
 
-TOKEN = jwt.encode({"sub": "42"}, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+TOKEN = jwt.encode(
+    {"sub": "42", "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)},
+    settings.jwt_secret, algorithm=settings.jwt_algorithm,
+)
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 SRC = {"index": 1, "title": "T", "source_url": "https://x.gov/", "section": "S", "as_of": "2025-04-01", "snippet": "s"}
 
@@ -65,3 +69,42 @@ def test_rate_limit_returns_429(client, monkeypatch):
     monkeypatch.setattr(main, "rate_limiter", RateLimiter(2))
     codes = [client.post("/chat", json={"message": "hi", "stream": False}, headers=AUTH).status_code for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+class BrokenAdvisor:
+    async def run(self, question, history, user):
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
+        yield  # pragma: no cover
+
+
+def test_health_reports_missing_llm_key(client, monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "claude")
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    assert client.get("/health").json()["llm_configured"] is False
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    assert client.get("/health").json()["llm_configured"] is True
+
+
+def test_unconfigured_llm_gives_clear_503(client, monkeypatch):
+    monkeypatch.setattr(main, "advisor", BrokenAdvisor())
+    monkeypatch.setattr(settings, "llm_provider", "claude")
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    r = client.post("/chat", json={"message": "hi", "stream": False}, headers=AUTH)
+    assert r.status_code == 503 and "not configured" in r.json()["detail"]
+
+
+def test_gemini_needs_its_key(client, monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "gemini")
+    monkeypatch.setattr(settings, "gemini_api_key", "")
+    assert client.get("/health").json()["llm_configured"] is False
+    monkeypatch.setattr(settings, "gemini_api_key", "x")
+    assert client.get("/health").json()["llm_configured"] is True
+
+
+def test_gemini_client_refuses_to_start_without_key(monkeypatch):
+    from app.llm_client import LangChainLLM
+
+    monkeypatch.setattr(settings, "llm_provider", "gemini")
+    monkeypatch.setattr(settings, "gemini_api_key", "")
+    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+        LangChainLLM()

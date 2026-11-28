@@ -22,7 +22,17 @@ def _text(content) -> str:
 
 class LangChainLLM:
     def __init__(self) -> None:
-        if settings.llm_provider == "ollama":
+        if settings.llm_provider == "gemini":
+            if not settings.gemini_api_key:
+                raise RuntimeError("GEMINI_API_KEY is not set")
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            m = ChatGoogleGenerativeAI(model=settings.gemini_model, google_api_key=settings.gemini_api_key,
+                                       temperature=settings.temperature,
+                                       max_output_tokens=settings.max_output_tokens,
+                                       timeout=settings.llm_timeout_s)
+            self._fast = self._smart = m
+        elif settings.llm_provider == "ollama":
             from langchain_ollama import ChatOllama
 
             m = ChatOllama(model=settings.ollama_model, base_url=settings.ollama_base_url,

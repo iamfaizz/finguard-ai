@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +10,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # --- LLM (only used to WRITE answers; embeddings are local) ---
-    llm_provider: str = "claude"  # "claude" | "ollama"  <- the one switch
+    llm_provider: str = "ollama"  # "gemini" | "ollama" (default: local, no key) | "claude"
+    gemini_api_key: str = Field(default="", validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"))
+    gemini_model: str = "gemini-2.5-flash"  # copy a current model name from Google AI Studio
     anthropic_api_key: str = ""
     llm_model_fast: str = "claude-haiku-5-5"  # routine questions
     llm_model_smart: str = "claude-sonnet-5-5"  # harder questions
@@ -29,7 +32,8 @@ class Settings(BaseSettings):
 
     # --- backend / auth ---
     backend_url: str = "http://backend:8000"
-    jwt_secret: str  # MUST equal the backend's secret
+    # MUST equal the backend's secret. The backend calls it JWT_SECRET_KEY; JWT_SECRET also works.
+    jwt_secret: str = Field(validation_alias=AliasChoices("JWT_SECRET_KEY", "JWT_SECRET"))
     jwt_algorithm: str = "HS256"
     cors_origins: str = "http://localhost:5173"
 
