@@ -11,5 +11,8 @@ sentence-transformers==6.3.0
 langchain-core==1.6.3
 langchain-text-splitters==1.2.0
 langchain-ollama==1.2.0
-# NOT tested yet: pin the exact version after the first successful Claude run
-langchain-anthropic>=1.0,<2.0
+# Gemini (free tier via Google AI Studio). Resolved with langchain-core 1.6.3; not yet run with a real key.
+langchain-google-genai>=4.4,<5
+# Claude is NOT used. To enable it later: add langchain-anthropic, set
+# LLM_PROVIDER=claude and ANTHROPIC_API_KEY.
+# langchain-anthropic>=1.0,<2.0
